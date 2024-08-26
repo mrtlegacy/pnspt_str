@@ -1,0 +1,316 @@
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © illimitedenterprise
+
+//@version=5
+strategy("I-99-STR", overlay = true, commission_type = currency.USD, commission_value = 0.4, initial_capital = 100)
+
+showsignals = input.bool(false, title="Show signals strA?")
+showsignalsb = input.bool(false, title="Show signals strB?")
+showsignalsc = input.bool(false, title="Show signals strC?")
+showsignalsd = input.bool(false, title="Show signals strD?")
+showsignalse = input.bool(false, title="Show signals strE?")
+showsignalsf = input.bool(false, title="Show signals strF?")
+
+showsignalsl = input.bool(false, title="Show signals strL?")
+showsignalsr = input.bool(false, title="Show signals strR?")
+
+
+ema = ta.ema(ohlc4, 30)
+plot(ema, color=color.orange, linewidth=2)
+
+len=input.int(7, title="Heikin Hashi length?")
+o=ta.ema(open,len)
+c=ta.ema(close,len)
+h=ta.ema(high,len)
+l=ta.ema(low,len)
+
+var float haopen = 0
+
+haclose = (o+h+l+c)/4
+haopen := na(haopen[1]) ? (o + c)/2 : (haopen[1] + haclose[1]) / 2
+hahigh = math.max (h, math.max(haopen,haclose))
+halow = math.min (l, math.min(haopen,haclose))
+
+len2=input.int(7, title="EMA Heikin Hashi length?")
+oo2= ta.ema(haopen, len2)
+c2= ta.ema(haclose, len2)
+h2= ta.ema(hahigh, len2)
+l2= ta.ema(halow, len2)
+
+ha4 = (haclose + haopen + hahigh + halow) / 4
+
+sigb = ha4 > ema//open > ema and close > ema
+sigs = ha4 < ema//open < ema and close < ema
+
+diff = ema - ha4
+abs = math.abs(diff)
+minusHA = ha4 - abs
+
+//lot(minusHA, color=color.orange, linewidth=2)
+
+//col=o2>c2 ? red : lime
+//plotcandle(o2, h2, l2, c2, title="heikin smoothed", color=col)
+
+//plotchar(sigb and k1 > o2, char="🔥", size=size.small)
+//plotchar(sigs and k2 > o1, char="❄️", size=size.small)
+
+//cb = ta.crossover(ha4, ema)
+//cs = ta.crossunder(ha4, ema)
+//plotchar(cb, char="🔥", size=size.small)
+//plotchar(cs, char="❄️", size=size.small)
+
+colN = close < open ? color.yellow : color.blue
+plotcandle(open[0], high[0], low[0], close[0], title="Last candle", color=colN, show_last = 1)
+
+green = oo2 < c2
+red = oo2 > c2
+
+a1 = ta.barssince(green)
+a2 = ta.barssince(red)
+b1 = ta.barssince(green[1])
+b2 = ta.barssince(red[1])
+
+plotchar(showsignalsb and green and b1 > a2, char="🔥", size=size.small)
+plotchar(showsignalsb and red and b2 > a1, char="❄️", size=size.small)
+
+cdle = ta.sma(haopen, 5)
+
+down = oo2 > c2
+up = c2 > oo2
+
+o1 = ta.barssince(up)
+o2 = ta.barssince(down)
+k1 = ta.barssince(up[1])
+k2 = ta.barssince(down[1])
+
+plotchar(showsignals and up and k1 > o2, char="🔥", size=size.small)
+plotchar(showsignals and down and k2 > o1, char="❄️", size=size.small)
+
+showhullma = input.bool(false, title="Show Hull M. Average?")
+length = input.int(10, title="Hull Length?", minval=1)
+src = input(close, title="Source for Hull?")
+hullma = ta.wma(2*ta.wma(close, length/2)-ta.wma(close, length), math.floor(math.sqrt(length)))
+plot(showhullma ? hullma : na, color=color.blue, linewidth = 2)
+
+cb = ta.crossover(hullma, haopen)
+cs = ta.crossunder(hullma, haopen)
+
+plotchar(showsignalsc and cb, char="✅", size=size.small)
+plotchar(showsignalsc and cs, char="❌", size=size.small)
+
+total = haclose - haopen
+total1 = haclose[1] - haopen[1]
+total2 = haclose[2] - haopen[2]
+var bool check = na
+
+if math.abs(total) < 0.025//math.abs(total2) > math.abs(total1) and math.abs(total1) >= math.abs(total)
+    check := true
+else
+    check := false
+    
+plotchar(showsignalsd and check, char="⭐", size=size.small)
+
+checkloop = input.int(4, title="Lookback for str D?")
+
+shullma = ta.sma(haclose, 7)
+
+uu = ta.rising(shullma, checkloop)
+dd = ta.falling(shullma, checkloop)
+
+e1 = ta.barssince(uu)
+e2 = ta.barssince(dd)
+ef1 = ta.barssince(uu[1])
+ef2 = ta.barssince(dd[1])
+
+plotchar(showsignalse and uu and ef1 > e2, char="🛫", size=size.small)
+plotchar(showsignalse and dd and ef2 > e1, char="🛬", size=size.small)
+
+alertcondition((green and b1 > a2) or (red and b2 > a1), title="DIR CHANGED", message="")
+alertcondition(cs or cb, title="DIR C CHANGED", message="")
+
+uuf = hahigh > hahigh[1]
+ddf = hahigh < hahigh[1]
+
+f1 = ta.barssince(uuf)
+f2 = ta.barssince(ddf)
+ff1 = ta.barssince(uuf[1])
+ff2 = ta.barssince(ddf[1])
+
+plotchar(showsignalsf and uuf and ff1 > f2, char="☀️", size=size.small)
+plotchar(showsignalsf and ddf and ff2 > f1, char="🌑", size=size.small)
+
+// User inputs for the brick size
+brick_size = input.float(3, title="Renko Brick Size", step=0.1)
+
+// Initialize variables
+var float renko_open = na
+var float renko_high = na
+var float renko_low = na
+var float renko_close = na
+var int renko_direction = -1  // 1 for up, 0 for down
+
+// Renko calculation logic
+if na(renko_close)
+    // Initial brick is set to the current price
+    renko_open := close
+    renko_close := close
+    renko_high := renko_close + brick_size
+    renko_low := renko_close - brick_size
+
+// Check for upward movement to create an upward Renko brick
+if close >= renko_high
+    renko_direction := 1
+    renko_open := renko_close
+    renko_close := renko_open + brick_size
+    renko_high := renko_close + brick_size
+    renko_low := renko_close - brick_size
+
+// Check for downward movement to create a downward Renko brick
+if close <= renko_low
+    renko_direction := 0
+    renko_open := renko_close
+    renko_close := renko_open - brick_size
+    renko_high := renko_close + brick_size
+    renko_low := renko_close - brick_size
+
+showhashi = input.bool(false, title="Show S. Hashi?")
+
+col=oo2>c2 ? color.red : color.lime
+plotcandle(haopen, hahigh, halow, haclose, title="heikin smoothed", color=col, display= showhashi ? display.all : display.none)
+
+showrenko = input.bool(false, title="Show Renko Candles?")
+showrenkosma = input.bool(false, title="Show Renko M. Average?")
+showrenkobg = input.bool(false, title="Show Renko BG?")
+
+renkolen = input.int(5, title="Renko Length?")
+ros = ta.sma(renko_open, renkolen)
+rcs = ta.sma(renko_close, renkolen)
+rhs = ta.sma(renko_high, renkolen)
+rls = ta.sma(renko_low, renkolen)
+
+plot(showrenkosma ? rcs : na, color=rcs > rcs[1] ? color.green : color.red, linewidth = 2)
+
+plotcandle(ros, rhs, rls, rcs, title="Renko Candles", color=renko_direction == 1 ? color.green : color.red, display= showrenko ? display.all : display.none)
+bgcolor(showrenkobg and renko_direction == 1 ? color.new(#4CAF50, 70) : showrenkobg and renko_direction == 0 ? color.new(#FF5252, 70) : na)
+
+renko_dir_change = ta.change(renko_direction)
+
+plotchar(showsignalsr ? renko_dir_change : na, char="💵", size=size.small)
+
+cc = input.int(7,    title = "ATR Period")
+aa = input.int(7,     title = "ATR Sensivity")
+
+xATR  = ta.atr(cc)
+nLoss = aa * xATR
+
+xATRTrailingStop = 0.0
+if src > nz(xATRTrailingStop[1], 0) and src[1] > nz(xATRTrailingStop[1], 0)
+    xATRTrailingStop := math.max(nz(xATRTrailingStop[1]), src - nLoss)
+else if src < nz(xATRTrailingStop[1], 0) and src[1] < nz(xATRTrailingStop[1], 0)
+    xATRTrailingStop := math.min(nz(xATRTrailingStop[1]), src + nLoss)
+else
+    if src > nz(xATRTrailingStop[1], 0)
+        xATRTrailingStop := src - nLoss
+    else
+        xATRTrailingStop := src + nLoss
+ 
+pos = 0   
+if src[1] < nz(xATRTrailingStop[1], 0) and src > nz(xATRTrailingStop[1], 0)
+    pos := 1
+else if src[1] > nz(xATRTrailingStop[1], 0) and src < nz(xATRTrailingStop[1], 0)
+    pos := -1
+else
+    pos := nz(pos[1], 0)
+
+showatr = input.bool(false, title="Show ATR?")
+   
+plot(showatr ? xATRTrailingStop : na, color=hullma > xATRTrailingStop ? color.green : color.red, linewidth = 2)
+
+hullbuy = ta.crossover(hullma, xATRTrailingStop)
+hullsell = ta.crossunder(hullma, xATRTrailingStop)
+
+showlinreg = input.bool(false, title="Show L. Regression Candles?")
+
+linreg_length = input.int(title="Linear Regression Length", minval = 1, maxval = 200, defval = 7)
+
+bopen = showlinreg ? ta.linreg(open, linreg_length, 0) : na
+bhigh = showlinreg ? ta.linreg(high, linreg_length, 0) : na
+blow = showlinreg ? ta.linreg(low, linreg_length, 0) : na
+bclose = showlinreg ? ta.linreg(close, linreg_length, 0) : na
+
+r = bopen < bclose
+
+lensmoo = input.int(2, title="Sensivity")
+
+average_5 = ta.sma(close, 5)
+
+average_50 = ta.sma(close, 50)
+
+var bool bside = na
+var bool sside = na
+if bclose > bclose[lensmoo]
+    bside := true
+    sside := false
+else if bclose < bclose[lensmoo]
+    sside := true
+    bside := false
+    
+//barcolor(side ? color.new(color.blue, 0) : color.yellow)
+
+greenl = bopen < bclose
+redl = bclose < bopen
+
+l1 = ta.barssince(bside)
+ll2 = ta.barssince(sside)
+c1 = ta.barssince(bside[1])
+cc2 = ta.barssince(sside[1])
+
+cohete = bside and c1 > ll2
+meteorito = sside and cc2 > l1
+
+plotchar(showsignalsl ? cohete : na, char="🚀", size=size.small)
+plotchar(showsignalsl ? meteorito : na, char="☄️", size=size.small)
+
+
+plotcandle(r and showlinreg ? bopen : na, r and showlinreg ? bhigh : na, r and showlinreg ? blow: na, r and showlinreg ? bclose : na, title="LinReg Candles", color= bside ? color.new(color.blue, 0) : sside ? color.yellow : na, wickcolor=bside ? color.new(color.blue, 0) : sside ? color.yellow : na, bordercolor=bside ? color.new(color.blue, 0) : sside ? color.yellow : na, editable= true)
+plotcandle(r and showlinreg ? na : bopen, r and showlinreg ? na : bhigh, r and showlinreg ? na : blow, r and showlinreg ? na : bclose, title="LinReg Candles", color=bside ? color.new(color.blue, 0) : sside ? color.yellow : na, bordercolor=bside ? color.new(color.blue, 0) : sside ? color.yellow : na, editable= true)
+
+var bool upr = false
+var bool downr = false
+
+if haclose > haopen
+    upr := true
+    downr := false
+else
+    downr := true
+    upr := false
+
+rr1 = ta.barssince(upr)
+rr2 = ta.barssince(downr)
+rrr1 = ta.barssince(upr[1])
+rrr2 = ta.barssince(downr[1])
+
+FromMonth = input.int(defval = 8, title = "From Month", minval = 1, maxval = 12)
+FromDay   = input.int(defval = 24, title = "From Day", minval = 1, maxval = 31)
+FromYear  = input.int(defval = 2024, title = "From Year", minval = 2015)
+ToMonth   = input.int(defval = 1, title = "To Month", minval = 1, maxval = 12)
+ToDay     = input.int(defval = 1, title = "To Day", minval = 1, maxval = 31)
+ToYear    = input.int(defval = 9999, title = "To Year", minval = 2015)
+
+start     = timestamp(FromYear, FromMonth, FromDay, 00, 00)
+finish    = timestamp(ToYear, ToMonth, ToDay, 23, 59)
+window()  => time >= start and time <= finish ? true : false
+
+if upr and rrr1 > rr2 and window()
+    strategy.entry("BUY", strategy.long, qty=1, oca_name="BUY")
+
+if downr and rrr2 > rr1 and window()
+    strategy.entry("SELL", strategy.short, qty=1, oca_name="SELL")
+
+stoploss = input(title="SL Activation", defval=10000.0)
+trailActivation = input(title="TP Activation", defval=5000)
+trailOffset = input(title="TP Trigger", defval=4000)
+
+
+strategy.exit("B.Exit", "BUY", qty_percent = 100, loss=stoploss, trail_offset=trailOffset, trail_points=trailActivation) // set take profit with "profit=totalticks"
+strategy.exit("S.Exit", "SELL", qty_percent = 100, loss=stoploss, trail_offset=trailOffset, trail_points=trailActivation) // set take profit with "profit=totalticks"
